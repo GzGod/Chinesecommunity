@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 项目表
+model Project {
+  id            String     @id @default(cuid())
+  slug          String     @unique
+  name          String
+  nameEn        String?
+  logo          String
+  description   String     @db.Text
+  descriptionEn String?    @db.Text
+  website       String?
+  twitter       String?
+  telegram      String?
+  discord       String?
+  category      String[]
+  tags          String[]
+  status        String     @default("active")
+  featured      Boolean    @default(false)
+  order         Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  posts         Post[]
+  events        Event[]
+  resources     Resource[]
+
+  @@index([status, featured, order])
+}
+
+// 内容表
+model Post {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type        String    // official_tweet, community_tweet, screenshot, event
+  title       String
+  titleEn     String?
+  content     String    @db.Text
+  contentEn   String?   @db.Text
+  images      String[]
+  link        String?
+  tags        String[]
+  featured    Boolean   @default(false)
+  pinned      Boolean   @default(false)
+  publishedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  comments    Comment[]
+
+  @@index([projectId, publishedAt])
+  @@index([type, featured])
+}
+
+// 评论表
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    String?
+  content   String    @db.Text
+  approved  Boolean   @default(false)
+  likes     Int       @default(0)
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  createdAt DateTime  @default(now())
+
+  @@index([postId, approved])
+}
+
+// 管理员表
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}
+
+// 贡献者表
+model Contributor {
+  id        String   @id @default(cuid())
+  name      String
+  avatar    String?
+  bio       String?  @db.Text
+  twitter   String?
+  telegram  String?
+  postCount Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// 活动表
+model Event {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  titleEn     String?
+  description String    @db.Text
+  type        String    // ama, airdrop, unlock, conference
+  startTime   DateTime
+  endTime     DateTime?
+  link        String?
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId, startTime])
+}
+
+// 资源表
+model Resource {
+  id        String   @id @default(cuid())
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title     String
+  category  String   // tutorial, whitepaper, report, faq
+  type      String   // file, link
+  url       String
+  downloads Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([category])
+}
